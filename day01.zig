@@ -2,9 +2,26 @@ const std = @import("std");
 
 const instructions = @embedFile("day01-part1.txt");
 
-fn password(alloc: std.mem.Allocator, input: []const u8) !u32 {
-    var dial: i32 = 50;
-    var countAtZero: u32 = 0;
+const Safe = struct {
+    dial_size: i32,
+    dial_pos: i32 = 0,
+    times_past_zero: i32 = 0,
+
+    fn rotate(self: *Safe, rot: i32) !void {
+        const next: i32 = self.dial_pos + rot;
+
+        // adjust for backwards rotations from zero
+        if (next <= 0 and next != rot) {
+            self.times_past_zero += 1;
+        }
+
+        self.times_past_zero += @divFloor(@as(i32, @intCast(@abs(next))), self.dial_size);
+        self.dial_pos = @mod(next, self.dial_size);
+    }
+};
+
+fn password(alloc: std.mem.Allocator, input: []const u8) !i32 {
+    var safe = Safe{ .dial_size = 100, .dial_pos = 50 };
 
     var it = std.mem.tokenizeScalar(u8, input, '\n');
     while (it.next()) |line| {
@@ -16,13 +33,10 @@ fn password(alloc: std.mem.Allocator, input: []const u8) !u32 {
         const trimmed = std.mem.trim(u8, mut_line, " ");
 
         const rot = try std.fmt.parseInt(i32, trimmed, 10);
-        dial = try std.math.mod(i32, dial + rot, 100);
-        if (dial == 0) {
-            countAtZero += 1;
-        }
+        try safe.rotate(rot);
     }
 
-    return countAtZero;
+    return safe.times_past_zero;
 }
 
 pub fn main() !void {
@@ -57,5 +71,5 @@ test "the provided example" {
     ;
 
     const result = try password(alloc, input);
-    try std.testing.expectEqual(result, @as(u32, 3));
+    try std.testing.expectEqual(6, result);
 }
