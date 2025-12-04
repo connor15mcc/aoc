@@ -1,24 +1,25 @@
 const std = @import("std");
 
 const batteries = @embedFile("day03.txt");
+const battery_size = 12;
 
 fn total_joltage(alloc: std.mem.Allocator, input: []const u8) !u64 {
     var joltage: u64 = 0;
 
+    var battery_stack = try std.ArrayList(u8).initCapacity(alloc, battery_size);
+    defer battery_stack.deinit(alloc);
+
     var it = std.mem.tokenizeScalar(u8, input, '\n');
     while (it.next()) |line| {
         const bank = std.mem.trim(u8, line, " ");
-        joltage += try max_joltage(alloc, bank);
+        joltage += try max_joltage(alloc, bank, &battery_stack);
+        battery_stack.clearRetainingCapacity();
     }
 
     return joltage;
 }
 
-fn max_joltage(alloc: std.mem.Allocator, bank: []const u8) !u64 {
-    const battery_size = 12;
-    var battery_stack = std.ArrayList(u8).empty;
-    defer battery_stack.deinit(alloc);
-
+fn max_joltage(alloc: std.mem.Allocator, bank: []const u8, battery_stack: *std.ArrayList(u8)) !u64 {
     for (0..bank.len, bank) |i, battery| {
         while (
         // stack not empty
