@@ -35,7 +35,11 @@ fn max_joltage(alloc: std.mem.Allocator, bank: []const u8, battery_stack: *std.A
         }
     }
 
-    return try std.fmt.parseInt(u64, battery_stack.items, 10);
+    var result: u64 = 0;
+    for (battery_stack.items) |digit| {
+        result = result * 10 + (digit - '0');
+    }
+    return result;
 }
 
 pub fn main() !void {
