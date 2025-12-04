@@ -43,15 +43,8 @@ fn max_joltage(alloc: std.mem.Allocator, bank: []const u8, battery_stack: *std.A
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) {
-            @panic("Memory leak detected!");
-        }
-    }
-
-    const alloc = gpa.allocator();
+    var sfa = std.heap.stackFallback(4096, std.heap.page_allocator);
+    const alloc = sfa.get();
 
     const soln = try total_joltage(alloc, batteries);
     std.debug.print("Solution: {d}\n", .{soln});
