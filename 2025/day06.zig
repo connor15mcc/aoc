@@ -29,12 +29,18 @@ const Problem = struct {
             },
         };
 
-        var numbers = try alloc.alloc(u64, num_lines.len);
-        for (0.., num_lines) |i, line| {
-            const clamped = line[col_i..col_j];
-            const trimmed = std.mem.trim(u8, clamped, " ");
-            const number = try std.fmt.parseInt(u64, trimmed, 10);
-            numbers[i] = number;
+        var numbers = try alloc.alloc(u64, col_j - col_i);
+        for (0.., col_i..col_j) |num_idx, offset| {
+            var number = try alloc.alloc(u8, num_lines.len);
+            defer alloc.free(number);
+
+            const col_idx = col_j - 1 - (offset - col_i);
+            for (0.., num_lines) |idx, line| {
+                number[idx] = line[col_idx];
+            }
+
+            const trimmed = std.mem.trim(u8, number, " ");
+            numbers[num_idx] = try std.fmt.parseInt(u64, trimmed, 10);
         }
 
         return Problem{
@@ -135,5 +141,5 @@ test "provided example" {
         \\  6 98  215 314
         \\*   +   *   +  
     ;
-    try std.testing.expectEqual(4277556, sum_problems(alloc, input));
+    try std.testing.expectEqual(3263827, sum_problems(alloc, input));
 }
