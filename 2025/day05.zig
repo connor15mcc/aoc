@@ -32,24 +32,31 @@ fn count_fresh(alloc: std.mem.Allocator, input: []const u8) !u64 {
     }
     std.mem.sortUnstable(FreshIdRange, fresh_ranges.items, {}, FreshIdRange.cmpByLow);
 
-    var num_fresh: u64 = 0;
-    while (it.next()) |line| {
-        if (line.len == 0) break;
-
-        const food_id = try std.fmt.parseInt(usize, line, 10);
-        if (isFresh(fresh_ranges.items, food_id)) num_fresh += 1;
-    }
-
-    return num_fresh;
+    return try numFresh(fresh_ranges.items);
 }
 
-fn isFresh(ranges: []const FreshIdRange, food_id: usize) bool {
-    for (ranges) |range| {
-        if (food_id >= range.low and food_id <= range.high) {
-            return true;
+fn numFresh(ranges: []const FreshIdRange) !u64 {
+    if (ranges.len == 0) return 0;
+
+    var count: u64 = 0;
+    var low = ranges[0].low;
+    var high = ranges[0].high;
+
+    for (ranges[1..]) |range| {
+        // (non-strictly) overlapping, so extend upper bound of tracked range
+        if (range.low <= high + 1) {
+            high = @max(high, range.high);
+            continue;
         }
+
+        // no overlap, update count and track the new range
+        count += (high - low + 1);
+        low = range.low;
+        high = range.high;
     }
-    return false;
+
+    // all prev counted + final tracked range
+    return count + (high - low + 1);
 }
 
 pub fn main() !void {
@@ -81,5 +88,5 @@ test "provided example" {
         \\17
         \\32
     ;
-    try std.testing.expectEqual(3, count_fresh(alloc, input));
+    try std.testing.expectEqual(14, count_fresh(alloc, input));
 }
