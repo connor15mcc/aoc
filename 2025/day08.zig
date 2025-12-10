@@ -48,6 +48,7 @@ const StringLight = struct {
 const Circuit = struct {
     parent: []usize,
     size: []usize,
+    count_distinct: usize,
 
     fn init(alloc: std.mem.Allocator, n: usize) !Circuit {
         const parent = try alloc.alloc(usize, n);
@@ -60,6 +61,7 @@ const Circuit = struct {
         return .{
             .parent = parent,
             .size = size,
+            .count_distinct = n,
         };
     }
 
@@ -88,10 +90,11 @@ const Circuit = struct {
 
         self.parent[root_j] = root_i;
         self.size[root_i] += self.size[root_j];
+        self.count_distinct -= 1;
     }
 };
 
-fn sumCircuits(alloc: std.mem.Allocator, input: []const u8, limit: u16) !u64 {
+fn sumCircuits(alloc: std.mem.Allocator, input: []const u8) !i64 {
     var boxes = std.ArrayList(JunctionBox).empty;
     defer boxes.deinit(alloc);
 
@@ -111,23 +114,22 @@ fn sumCircuits(alloc: std.mem.Allocator, input: []const u8, limit: u16) !u64 {
         }
     }
     std.mem.sortUnstable(StringLight, lights.items, {}, StringLight.cmp);
-    try lights.resize(alloc, limit);
 
     var circuits = try Circuit.init(alloc, boxes.items.len);
     defer circuits.deinit(alloc);
 
     for (lights.items) |light| {
         circuits.unite(light.i, light.j);
+        if (circuits.count_distinct == 1) {
+            const last_i = boxes.items[light.i];
+            const last_j = boxes.items[light.j];
+            return last_i.x * last_j.x;
+        }
     }
 
-    var sizes = std.ArrayList(usize).empty;
-    defer sizes.deinit(alloc);
-    for (0.., circuits.parent) |i, parent| {
-        if (i == parent) try sizes.append(alloc, circuits.size[i]);
-    }
-    std.mem.sortUnstable(usize, sizes.items, {}, std.sort.desc(usize));
-
-    return sizes.items[0] * sizes.items[1] * sizes.items[2];
+    // the above loop will always terminate.
+    // we join the closest boxes until there's one large circuit
+    unreachable;
 }
 
 pub fn main() !void {
@@ -140,7 +142,7 @@ pub fn main() !void {
     }
     const alloc = gpa.allocator();
 
-    const soln = try sumCircuits(alloc, junctionBoxes, 1000);
+    const soln = try sumCircuits(alloc, junctionBoxes);
     std.debug.print("Solution: {d}\n", .{soln});
 }
 
@@ -168,5 +170,5 @@ test "provided example" {
         \\984,92,344
         \\425,690,689
     ;
-    try std.testing.expectEqual(40, sumCircuits(alloc, input, 10));
+    try std.testing.expectEqual(25272, sumCircuits(alloc, input));
 }
