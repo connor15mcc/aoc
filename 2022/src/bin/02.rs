@@ -1,7 +1,11 @@
 pub fn main() {
-    let input1 = include_str!("../../day02_part1.txt");
-    let result = part_one(input1);
-    println!("Part one: {}", result.unwrap());
+    let input = include_str!("../../day02_part1.txt");
+    let result = part_one(input);
+    println!("Part 1: {}", result.unwrap());
+
+    let input = include_str!("../../day02_part2.txt");
+    let result = part_two(input);
+    println!("Part 2: {}", result.unwrap());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,13 +13,6 @@ enum Move {
     Rock,
     Paper,
     Scissors,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Outcome {
-    Win,
-    Draw,
-    Lose,
 }
 
 impl Move {
@@ -46,6 +43,20 @@ impl Move {
             _ => Outcome::Lose,
         }
     }
+
+    fn infer(outcome: Outcome, other: Self) -> Self {
+        match (outcome, other) {
+            (Outcome::Draw, other) => other,
+
+            (Outcome::Win, Move::Rock) => Move::Paper,
+            (Outcome::Win, Move::Paper) => Move::Scissors,
+            (Outcome::Win, Move::Scissors) => Move::Rock,
+
+            (Outcome::Lose, Move::Rock) => Move::Scissors,
+            (Outcome::Lose, Move::Paper) => Move::Rock,
+            (Outcome::Lose, Move::Scissors) => Move::Paper,
+        }
+    }
 }
 
 impl TryFrom<char> for Move {
@@ -59,6 +70,27 @@ impl TryFrom<char> for Move {
             v => return Err(format!("unexpected move: {}", v)),
         };
         Ok(movement)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Outcome {
+    Win,
+    Draw,
+    Lose,
+}
+
+impl TryFrom<char> for Outcome {
+    type Error = String;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        let outcome = match value {
+            'X' => Outcome::Lose,
+            'Y' => Outcome::Draw,
+            'Z' => Outcome::Win,
+            v => return Err(format!("unexpected outcome: {}", v)),
+        };
+        Ok(outcome)
     }
 }
 
@@ -80,6 +112,25 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(total_score)
 }
 
+pub fn part_two(input: &str) -> Option<u32> {
+    let mut total_score = 0;
+    for line in input.trim().lines() {
+        let line = line.trim();
+        let (theirs, outcome) = line.split_once(' ').expect("rounds have exactly one space");
+
+        let theirs = theirs.chars().next().expect("one char for theirs");
+        let outcome = outcome.chars().next().expect("one char for outcome");
+
+        let theirs = Move::try_from(theirs).expect("they must make a valid move");
+        let outcome = Outcome::try_from(outcome).expect("a provided valid outcome");
+        let ours = Move::infer(outcome, theirs);
+
+        total_score += ours.score(theirs);
+    }
+
+    Some(total_score)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,5 +144,16 @@ mod tests {
         "#;
         let result = part_one(input);
         assert_eq!(result, Some(15));
+    }
+
+    #[test]
+    fn test_part_two() {
+        let input = r#"
+            A Y
+            B X
+            C Z
+        "#;
+        let result = part_two(input);
+        assert_eq!(result, Some(12));
     }
 }
