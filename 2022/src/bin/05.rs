@@ -4,21 +4,29 @@ pub fn main() {
     let input = include_str!("../../day05_part1.txt");
     let result = part_one(input);
     println!("Part 1: {}", result.unwrap());
+
+    let input = include_str!("../../day05_part2.txt");
+    let result = part_two(input);
+    println!("Part 2: {}", result.unwrap());
 }
 
 #[derive(Debug)]
 struct Drawing(Vec<Vec<Crate>>);
 
 impl Drawing {
-    fn rearrange(&mut self, rearrangement: Rearrangement) {
-        let Rearrangement { quantity, from, to } = rearrangement;
-
+    fn rearrange(&mut self, Rearrangement { quantity, from, to }: Rearrangement) {
         for _ in 0..quantity {
             let c = self.0[from]
                 .pop()
                 .expect("stack must be non-empty to remove a crate");
             self.0[to].push(c);
         }
+    }
+
+    fn rearrange_many(&mut self, Rearrangement { quantity, from, to }: Rearrangement) {
+        let split_at = self.0[from].len().sub(quantity);
+        let crates = self.0[from].split_off(split_at);
+        self.0[to].extend(crates);
     }
 
     fn tops(&self) -> String {
@@ -132,6 +140,29 @@ pub fn part_one(input: &str) -> Option<String> {
     Some(drawing.tops())
 }
 
+pub fn part_two(input: &str) -> Option<String> {
+    let mut lines = input.lines();
+    let mut lines = lines.by_ref().skip_while(|line| line.trim().is_empty());
+
+    let drawing = lines
+        .by_ref()
+        .take_while(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut drawing = Drawing::from_str(&drawing).expect("proper crate drawing");
+
+    let rearrangements: Vec<_> = lines
+        .take_while(|line| !line.trim().is_empty())
+        .map(|line| Rearrangement::from_str(line.trim()).expect("crate rearrangement"))
+        .collect();
+
+    for rearrangement in rearrangements {
+        drawing.rearrange_many(rearrangement);
+    }
+
+    Some(drawing.tops())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +182,22 @@ mod tests {
         "#;
         let result = part_one(input);
         assert_eq!(result, Some("CMZ".to_string()));
+    }
+
+    #[test]
+    fn test_part_two() {
+        let input = r#"
+                [D]    
+            [N] [C]    
+            [Z] [M] [P]
+             1   2   3 
+
+            move 1 from 2 to 1
+            move 3 from 1 to 3
+            move 2 from 2 to 1
+            move 1 from 1 to 2
+        "#;
+        let result = part_two(input);
+        assert_eq!(result, Some("MCD".to_string()));
     }
 }
