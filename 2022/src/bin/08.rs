@@ -46,6 +46,13 @@ impl Grid {
             .any(|direction| self.visible_from(position, direction))
     }
 
+    fn scenic_score(&self, position: Position) -> usize {
+        Direction::ALL
+            .into_iter()
+            .map(|direction| self.viewing_distance(position, direction))
+            .product()
+    }
+
     fn visible_from(&self, position: Position, direction: Direction) -> bool {
         let height = self[position];
 
@@ -54,6 +61,24 @@ impl Grid {
         })
         .map(|position| self[position])
         .all(|other| other < height)
+    }
+
+    fn viewing_distance(&self, position: Position, direction: Direction) -> usize {
+        let height = self[position];
+
+        std::iter::successors(self.step(position, direction), |position| {
+            self.step(*position, direction)
+        })
+        .map(|position| self[position])
+        .scan(false, |blocked, other| {
+            if *blocked {
+                return None;
+            }
+
+            *blocked = other >= height;
+            Some(other)
+        })
+        .count()
     }
 
     fn step(&self, position: Position, direction: Direction) -> Option<Position> {
@@ -146,6 +171,10 @@ pub fn main() {
     let input = include_str!("../../day08_part1.txt");
     let result = part_one(input);
     println!("Part 1: {}", result.unwrap());
+
+    let input = include_str!("../../day08_part2.txt");
+    let result = part_two(input);
+    println!("Part 2: {}", result.unwrap());
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -155,6 +184,15 @@ pub fn part_one(input: &str) -> Option<u32> {
         .filter(|&position| grid.is_visible(position))
         .count();
     Some(visible as u32)
+}
+
+pub fn part_two(input: &str) -> Option<u32> {
+    let grid = Grid::from_str(input.trim()).expect("valid grid");
+    let best_score = grid
+        .positions()
+        .map(|position| grid.scenic_score(position))
+        .max();
+    Some(best_score.expect("there must be a best treehouse location") as u32)
 }
 
 #[cfg(test)]
@@ -172,5 +210,18 @@ mod tests {
         "#;
         let result = part_one(input);
         assert_eq!(result, Some(21));
+    }
+
+    #[test]
+    fn test_part_two() {
+        let input = r#"
+            30373
+            25512
+            65332
+            33549
+            35390
+        "#;
+        let result = part_two(input);
+        assert_eq!(result, Some(8));
     }
 }
