@@ -7,6 +7,10 @@ pub fn main() {
     let input = include_str!("../../day07_part1.txt");
     let result = part_one(input);
     println!("Part 1: {}", result.unwrap());
+
+    let input = include_str!("../../day07_part2.txt");
+    let result = part_two(input);
+    println!("Part 2: {}", result.unwrap());
 }
 
 type Path = Vec<String>;
@@ -173,6 +177,38 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(sum)
 }
 
+pub fn part_two(input: &str) -> Option<u32> {
+    let total_disk_space = 70_000_000;
+    let space_for_update = 30_000_000;
+
+    let commands = input
+        .trim()
+        .lines()
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .chunk_by(|_, next| !next.starts_with('$'))
+        .map(|chunk| Command::from_iter(chunk.iter().copied()))
+        .collect::<Vec<_>>();
+
+    let fs =
+        Filesystem::from_observed(&commands).expect("commands occurred for a possible filesystem");
+
+    let directory_sizes = fs.directory_sizes();
+    let total_disk_usage = directory_sizes
+        .get(&Vec::new())
+        .expect("root dir must have an associated size");
+    let unused_space = total_disk_space - total_disk_usage;
+    let space_to_create = space_for_update - unused_space;
+
+    let mut possible_directories_for_del = {
+        let mut sizes = directory_sizes.values().copied().collect::<Vec<_>>();
+        sizes.sort_unstable();
+        sizes.into_iter().filter(|&size| size > space_to_create)
+    };
+
+    possible_directories_for_del.next()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,5 +242,36 @@ mod tests {
         "#;
         let result = part_one(input);
         assert_eq!(result, Some(95437));
+    }
+
+    #[test]
+    fn test_part_two() {
+        let input = r#"
+            $ cd /
+            $ ls
+            dir a
+            14848514 b.txt
+            8504156 c.dat
+            dir d
+            $ cd a
+            $ ls
+            dir e
+            29116 f
+            2557 g
+            62596 h.lst
+            $ cd e
+            $ ls
+            584 i
+            $ cd ..
+            $ cd ..
+            $ cd d
+            $ ls
+            4060174 j
+            8033020 d.log
+            5626152 d.ext
+            7214296 k
+        "#;
+        let result = part_two(input);
+        assert_eq!(result, Some(24933642));
     }
 }
